@@ -8,44 +8,46 @@
 </head>
 <body>
   <!-- Everything is drawn on a fixed 1920x1080 stage, scaled to fit the TV's browser. -->
-  <div id="stage" class="layout-classic">
+  <div id="stage">
     <div class="bg" id="bg-a"></div>
     <div class="bg" id="bg-b"></div>
     <div class="shade"></div>
 
-    <div id="ui">
-      <header class="top">
-        <div class="timebox">
-          <div class="greeting" id="greeting"></div>
-          <div class="clock" id="clock">--:--</div>
-          <div class="date" id="date"></div>
-        </div>
-        <div class="weather" id="weather">
-          <div class="w-temp" id="w-temp"></div>
-          <div class="w-text" id="w-text"></div>
-          <div class="w-range" id="w-range"></div>
-        </div>
-      </header>
+    <div class="clock" id="clock">--:--</div>
 
-      <nav class="tiles" id="tiles"></nav>
-
-      <footer class="hints">
-        <span><b>OK</b> open</span>
-        <span><i class="dot blue"></i> settings</span>
-        <span><i class="dot yellow"></i> frame mode</span>
-      </footer>
+    <div class="topbar" id="topbar">
+      <div class="icon-btn" data-act="wallpaper" title="Next wallpaper">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 3.5 3.5L15 14l5 4.5"/></svg>
+      </div>
+      <div class="icon-btn" data-act="tvhome" title="Hisense home">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
+      </div>
+      <div class="icon-btn" data-act="settings" title="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.6 2.3 2.7-.6.9 2.6 2.6.9-.6 2.7 2.3 1.6-2.3 1.6.6 2.7-2.6.9-.9 2.6-2.7-.6L12 21.2l-1.6-2.3-2.7.6-.9-2.6-2.6-.9.6-2.7L2.5 12l2.3-1.6-.6-2.7 2.6-.9.9-2.6 2.7.6z"/></svg>
+      </div>
     </div>
 
-    <div id="frame-clock"></div>
+    <div class="dock" id="dock">
+      <div class="glass" id="glass-a"></div>
+      <div class="glass" id="glass-b"></div>
+      <div class="glass-tint"></div>
+      <div class="dock-row" id="dock-row"></div>
+    </div>
 
-    <aside id="settings" aria-hidden="true">
+    <div class="credit" id="credit"></div>
+    <div class="toast" id="toast"></div>
+
+    <aside id="settings">
       <h2>Settings</h2>
       <ul id="settings-list"></ul>
       <p class="settings-hint">◀ ▶ change &nbsp;·&nbsp; BACK close</p>
     </aside>
+
+    <aside id="diag"><h2>TV check</h2><pre id="diag-text"></pre><p class="settings-hint">Take a photo of this and send it to Claude · BACK close</p></aside>
   </div>
 
   <script src="js/config.js"></script>
+  <script src="wallpapers/credits.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

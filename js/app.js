@@ -1,65 +1,88 @@
-/* CleanFrame for VIDAA — written in plain ES5 so older TV browsers run it. */
+/* CleanFrame for VIDAA — written in plain ES5 so the TV's older browser runs it. */
 (function () {
   "use strict";
 
   var CFG = window.CLEANFRAME_CONFIG || {};
-  var STORE_KEY = "cleanframe.settings.v1";
+  var STORE_KEY = "cleanframe.settings.v2";
 
-  // Remote control key codes (VIDAA uses the standard HbbTV/DOM codes).
+  // Remote control key codes (VIDAA uses the standard DOM/HbbTV codes).
   var KEY = {
     LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, OK: 13,
     BACK: [8, 27, 461, 10009],
     RED: 403, GREEN: 404, YELLOW: 405, BLUE: 406
   };
 
-  var SCENES = ["dusk", "lake", "forest", "ember", "night", "paper"];
-  var hasPhotos = CFG.photos && CFG.photos.length > 0;
+  // ---------- the four apps ----------
+  // appId/name/url are what VIDAA itself uses for these apps (same values the
+  // open-source Hisense remotes send). Disney+ on VIDAA is a web app, so we can
+  // open it directly; the others need the TV to start them.
 
-  var PICTURES = (hasPhotos ? [{ id: "photos", label: "Your photos" }] : [])
-    .concat([{ id: "rotate", label: "All scenes" }])
-    .concat(SCENES.map(function (s) { return { id: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }));
+  var LOGOS = {
+    netflix: '<svg viewBox="0 0 56 100"><path d="M0 0h16l24 62V0h16v100H40L16 38v62H0z"/></svg>',
+    disney: '<svg viewBox="0 0 120 100"><path d="M10 34C34 6 92 4 114 30" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>' +
+            '<text x="16" y="92" font-family="Georgia, \'Times New Roman\', serif" font-style="italic" font-weight="700" font-size="70">D</text>' +
+            '<path d="M84 50h26M97 37v26" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>',
+    youtube: '<svg viewBox="0 0 140 100"><rect x="0" y="12" width="140" height="76" rx="22"/><path d="M57 32v36l31-18z" fill="#24282f"/></svg>',
+    prime: '<svg viewBox="0 0 160 100"><text x="80" y="56" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-weight="700" font-size="50" letter-spacing="-1">prime</text>' +
+           '<path d="M24 70c34 20 82 22 112 2" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M124 64l14 6-8 12" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  var APPS = {
+    netflix: { label: "Netflix", appId: "1", name: "Netflix", url: "netflix" },
+    disney:  { label: "Disney+", appId: "295", name: "Disney+", url: "https://cd-dmgz.bamgrid.com/bbd/hisense_tv/index.html", web: true },
+    youtube: { label: "YouTube", appId: "3", name: "YouTube", url: "youtube", webFallback: "https://www.youtube.com/tv" },
+    prime:   { label: "Prime Video", appId: "2", name: "Prime Video", url: "amazon" }
+  };
+
+  // ---------- wallpapers ----------
+
+  var WALLS = (CFG.photos && CFG.photos.length)
+    ? CFG.photos.map(function (p, i) { return { id: "p" + i, src: p, blur: p, title: "Your photo " + (i + 1) }; })
+    : (window.CLEANFRAME_WALLPAPERS || []).map(function (w) {
+        return { id: w.id, src: "wallpapers/" + w.id + ".jpg", blur: "wallpapers/" + w.id + "-blur.jpg",
+                 title: w.title, credit: "Photo: " + w.title + " — " + w.artist + " · " + w.license + " · Wikimedia Commons" };
+      });
+
+  // ---------- settings ----------
 
   var OPTIONS = {
-    picture: PICTURES,
-    layout: [{ id: "classic", label: "Classic" }, { id: "centered", label: "Centered" }, { id: "minimal", label: "Minimal" }],
+    wallpaper: [{ id: "rotate", label: "Rotate all" }].concat(WALLS.map(function (w, i) {
+      return { id: w.id, label: (i + 1) + ". " + shorten(w.title, 22) };
+    })),
     clock: [{ id: "12", label: "12-hour" }, { id: "24", label: "24-hour" }],
-    weather: [{ id: "on", label: "On" }, { id: "off", label: "Off" }],
-    frame: [{ id: "0", label: "Off" }, { id: "2", label: "2 min" }, { id: "5", label: "5 min" },
-            { id: "10", label: "10 min" }, { id: "30", label: "30 min" }]
+    every: [{ id: "5", label: "5 min" }, { id: "15", label: "15 min" }, { id: "30", label: "30 min" }, { id: "60", label: "1 hour" }],
+    frame: [{ id: "0", label: "Off" }, { id: "1", label: "1 min" }, { id: "2", label: "2 min" },
+            { id: "5", label: "5 min" }, { id: "10", label: "10 min" }]
   };
+
+  function shorten(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
 
   function defaults() {
     return {
-      picture: hasPhotos ? "photos" : "rotate",
-      layout: "classic",
+      wallpaper: "rotate",
       clock: "12",
-      weather: CFG.weather && CFG.weather.enabled === false ? "off" : "on",
-      frame: String(CFG.frameModeAfterMinutes == null ? 5 : CFG.frameModeAfterMinutes)
+      every: String(CFG.wallpaperEveryMinutes || 15),
+      frame: String(CFG.frameModeAfterMinutes == null ? 2 : CFG.frameModeAfterMinutes)
     };
-  }
-
-  // ---------- storage (always guarded: it can be missing or throw) ----------
-
-  function load() {
-    var s = defaults();
-    try {
-      var raw = window.localStorage.getItem(STORE_KEY);
-      if (raw) {
-        var saved = JSON.parse(raw);
-        for (var k in s) { if (saved[k] != null && findIndex(OPTIONS[k], saved[k]) >= 0) s[k] = saved[k]; }
-      }
-    } catch (e) {}
-    if (findIndex(OPTIONS.frame, s.frame) < 0) s.frame = "5";
-    return s;
-  }
-
-  function save() {
-    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {}
   }
 
   function findIndex(list, id) {
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return i;
     return -1;
+  }
+
+  function load() {
+    var s = defaults(), k;
+    try {
+      var saved = JSON.parse(window.localStorage.getItem(STORE_KEY) || "{}");
+      for (k in s) { if (saved[k] != null) s[k] = saved[k]; }
+    } catch (e) {}
+    for (k in s) { if (findIndex(OPTIONS[k], s[k]) < 0) s[k] = OPTIONS[k][0].id; }
+    return s;
+  }
+
+  function save() {
+    try { window.localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {}
   }
 
   var settings = load();
@@ -73,7 +96,8 @@
     if (text != null) n.appendChild(document.createTextNode(text));
     return n;
   }
-  function addClass(n, c) { if ((" " + n.className + " ").indexOf(" " + c + " ") < 0) n.className = (n.className + " " + c).replace(/^\s+/, ""); }
+  function hasClass(n, c) { return (" " + n.className + " ").indexOf(" " + c + " ") >= 0; }
+  function addClass(n, c) { if (!hasClass(n, c)) n.className = (n.className + " " + c).replace(/^\s+/, ""); }
   function removeClass(n, c) { n.className = (" " + n.className + " ").replace(" " + c + " ", " ").replace(/^\s+|\s+$/g, ""); }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
 
@@ -93,151 +117,193 @@
 
   // ---------- clock ----------
 
-  var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  var MONTHS = ["January", "February", "March", "April", "May", "June", "July",
-                "August", "September", "October", "November", "December"];
-
-  function timeParts(d) {
-    var h = d.getHours(), m = pad(d.getMinutes());
-    if (settings.clock === "24") return { main: pad(h) + ":" + m, ampm: "" };
-    return { main: ((h % 12) || 12) + ":" + m, ampm: h < 12 ? "AM" : "PM" };
-  }
-
   function tickClock() {
-    var d = new Date(), t = timeParts(d), h = d.getHours();
-    var clock = $("clock");
+    var d = new Date(), h = d.getHours(), m = pad(d.getMinutes()), clock = $("clock");
     clock.innerHTML = "";
-    clock.appendChild(document.createTextNode(t.main));
-    if (t.ampm) clock.appendChild(el("span", "ampm", t.ampm));
-    $("frame-clock").textContent = t.main + (t.ampm ? " " + t.ampm : "");
-    $("date").textContent = DAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate();
-    var part = h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-    $("greeting").textContent = part + (CFG.name ? ", " + CFG.name : "");
+    if (settings.clock === "24") {
+      clock.appendChild(document.createTextNode(pad(h) + ":" + m));
+    } else {
+      clock.appendChild(document.createTextNode(((h % 12) || 12) + ":" + m));
+    }
   }
 
-  // ---------- weather (Open-Meteo: free, no key) ----------
+  // ---------- wallpaper crossfade ----------
 
-  var WMO = {
-    0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog", 48: "Freezing fog",
-    51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 56: "Freezing drizzle", 57: "Freezing drizzle",
-    61: "Light rain", 63: "Rain", 65: "Heavy rain", 66: "Freezing rain", 67: "Freezing rain",
-    71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
-    80: "Showers", 81: "Showers", 82: "Heavy showers", 85: "Snow showers", 86: "Snow showers",
-    95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm"
-  };
+  var layers = [{ bg: $("bg-a"), glass: $("glass-a") }, { bg: $("bg-b"), glass: $("glass-b") }];
+  var front = 0, wallIndex = 0, wallTimer = null;
 
-  function loadWeather() {
-    var w = CFG.weather || {};
-    if (settings.weather === "off" || w.latitude == null) return;
-    var unit = w.units === "fahrenheit" ? "fahrenheit" : "celsius";
-    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + w.latitude + "&longitude=" + w.longitude +
-      "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min" +
-      "&timezone=auto&forecast_days=1&temperature_unit=" + unit;
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.timeout = 15000;
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4 || xhr.status !== 200) return;
-      try {
-        var data = JSON.parse(xhr.responseText);
-        $("w-temp").textContent = Math.round(data.current.temperature_2m) + "°";
-        $("w-text").textContent = (WMO[data.current.weather_code] || "") + (w.place ? " · " + w.place : "");
-        $("w-range").textContent = "H " + Math.round(data.daily.temperature_2m_max[0]) + "°   L " +
-          Math.round(data.daily.temperature_2m_min[0]) + "°";
-      } catch (e) {}
+  function showWall(i) {
+    if (!WALLS.length) return;
+    wallIndex = (i + WALLS.length) % WALLS.length;
+    var w = WALLS[wallIndex], next = layers[1 - front], cur = layers[front];
+    var img = new Image();
+    img.onload = img.onerror = function () {
+      next.bg.style.backgroundImage = "url('" + w.src + "')";
+      next.glass.style.backgroundImage = "url('" + w.blur + "')";
+      void next.bg.offsetWidth; // let the new image land before fading
+      addClass(next.bg, "on"); addClass(next.glass, "on");
+      removeClass(cur.bg, "on"); removeClass(cur.glass, "on");
+      front = 1 - front;
+      $("credit").textContent = w.credit || "";
     };
-    xhr.send();
+    img.src = w.src;
   }
 
-  // ---------- background ----------
-
-  var bgLayers = [$("bg-a"), $("bg-b")], bgFront = 0, bgStep = 0, bgTimer = null;
-
-  function pictureList() {
-    if (settings.picture === "photos") return CFG.photos.map(function (p) { return { photo: p }; });
-    if (settings.picture === "rotate") return SCENES.map(function (s) { return { scene: s }; });
-    return [{ scene: settings.picture }];
-  }
-
-  function showPicture(item) {
-    var next = bgLayers[1 - bgFront], cur = bgLayers[bgFront];
-    next.className = "bg" + (item.scene ? " scene-" + item.scene : "");
-    next.style.backgroundImage = item.photo ? "url('" + item.photo + "')" : "";
-    // Force a style pass so the crossfade runs.
-    void next.offsetWidth;
-    addClass(next, "on");
-    removeClass(cur, "on");
-    bgFront = 1 - bgFront;
-  }
-
-  function startBackground() {
-    var list = pictureList();
-    clearInterval(bgTimer);
-    bgStep = 0;
-    showPicture(list[0]);
-    if (list.length > 1) {
-      var every = Math.max(1, CFG.photoEveryMinutes || 10) * 60000;
-      bgTimer = setInterval(function () {
-        bgStep = (bgStep + 1) % list.length;
-        showPicture(list[bgStep]);
-      }, every);
+  function startWallpaper() {
+    clearInterval(wallTimer);
+    if (settings.wallpaper === "rotate") {
+      showWall(Math.floor(Math.random() * WALLS.length));
+      wallTimer = setInterval(function () { showWall(wallIndex + 1); }, parseInt(settings.every, 10) * 60000);
+    } else {
+      showWall(findIndex(WALLS, settings.wallpaper));
     }
   }
 
-  // ---------- tiles ----------
+  function nextWallpaper() {
+    if (settings.wallpaper !== "rotate") {
+      var i = findIndex(OPTIONS.wallpaper, settings.wallpaper) + 1;
+      if (i >= OPTIONS.wallpaper.length) i = 1;
+      settings.wallpaper = OPTIONS.wallpaper[i].id;
+      save();
+    }
+    showWall(settings.wallpaper === "rotate" ? wallIndex + 1 : findIndex(WALLS, settings.wallpaper));
+  }
 
-  var tiles = [], tileIndex = 0;
+  // ---------- dock tiles + top icons ----------
 
-  function buildTiles() {
-    var nav = $("tiles");
-    nav.innerHTML = "";
+  var tiles = [], icons = [], zone = "dock", tileIndex = 0, iconIndex = 0;
+
+  function buildDock() {
+    var row = $("dock-row"), keys = CFG.apps || ["netflix", "disney", "youtube", "prime"];
+    row.innerHTML = "";
     tiles = [];
-    var list = (CFG.shortcuts || []).slice(0, 6);
+    for (var i = 0; i < keys.length; i++) {
+      var app = APPS[keys[i]];
+      if (!app) continue;
+      var t = el("div", "tile"), logo = el("div", "logo");
+      logo.innerHTML = LOGOS[keys[i]];
+      t.appendChild(logo);
+      t.appendChild(el("div", "label", app.label));
+      row.appendChild(t);
+      tiles.push({ node: t, app: app });
+    }
+    var w = Math.floor(1688 / Math.max(1, tiles.length));
+    for (var k = 0; k < tiles.length; k++) tiles[k].node.style.width = w + "px";
+
+    var nodes = $("topbar").getElementsByTagName("div");
+    for (var j = 0; j < nodes.length; j++) icons.push({ node: nodes[j], act: nodes[j].getAttribute("data-act") });
+  }
+
+  function paintFocus() {
+    for (var i = 0; i < tiles.length; i++) {
+      if (zone === "dock" && i === tileIndex) addClass(tiles[i].node, "focus"); else removeClass(tiles[i].node, "focus");
+    }
+    for (var j = 0; j < icons.length; j++) {
+      if (zone === "top" && j === iconIndex) addClass(icons[j].node, "focus"); else removeClass(icons[j].node, "focus");
+    }
+  }
+
+  function runIcon(act) {
+    if (act === "wallpaper") nextWallpaper();
+    else if (act === "tvhome") exitApp();
+    else if (act === "settings") openSheet("settings");
+  }
+
+  // ---------- opening apps ----------
+
+  var toastTimer = null;
+  function toast(msg, ms) {
+    var t = $("toast");
+    t.textContent = msg;
+    addClass(t, "on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { removeClass(t, "on"); }, ms || 6000);
+  }
+
+  // The TV's own list of installed apps, when this firmware lets a web page read it.
+  function readTvAppList() {
+    try {
+      if (typeof window.HiUtils_createRequest !== "function") return null;
+      var r = window.HiUtils_createRequest("fileRead", { path: "websdk/Appinfo.json", mode: 6 });
+      if (!r || !r.ret) return null;
+      var data = JSON.parse(r.msg);
+      return data && data.AppInfo ? data.AppInfo : null;
+    } catch (e) { return null; }
+  }
+
+  function findTvApp(app) {
+    var list = readTvAppList();
+    if (!list) return null;
+    var want = app.name.toLowerCase().replace(/[^a-z]/g, "");
     for (var i = 0; i < list.length; i++) {
-      var s = list[i], t = el("div", "tile"), b = el("div", "badge", s.icon ? "" : (s.letter || s.name.charAt(0)));
-      b.style.backgroundColor = s.color || "#555";
-      if (s.icon) b.style.backgroundImage = "url('" + s.icon + "')";
-      t.appendChild(b);
-      t.appendChild(el("div", "label", s.name));
-      t.setAttribute("data-url", s.url);
-      nav.appendChild(t);
-      tiles.push({ node: t, action: openUrl(s.url) });
+      var a = list[i] || {}, n = String(a.AppName || a.Title || "").toLowerCase().replace(/[^a-z]/g, "");
+      if (n && (n === want || n.indexOf(want) === 0 || want.indexOf(n) === 0)) return a;
     }
-    tiles.push(smallTile(nav, "ico-frame", "Frame", enterFrame));
-    tiles.push(smallTile(nav, "ico-settings", "Settings", openSettings));
-    if (tileIndex >= tiles.length) tileIndex = 0;
+    return null;
   }
 
-  function smallTile(nav, icon, name, fn) {
-    var t = el("div", "tile small"), b = el("div", "badge");
-    b.appendChild(el("i", icon));
-    t.appendChild(b);
-    t.appendChild(el("div", "label", name));
-    nav.appendChild(t);
-    return { node: t, action: fn };
-  }
-
-  function openUrl(url) { return function () { window.location.href = url; }; }
-
-  function focusTile(i) {
-    if (!tiles.length) return;
-    tileIndex = (i + tiles.length) % tiles.length;
-    for (var k = 0; k < tiles.length; k++) {
-      if (k === tileIndex) addClass(tiles[k].node, "focus"); else removeClass(tiles[k].node, "focus");
+  // Experimental: ask the TV to start an app the way its own launcher does.
+  // Unconfirmed on this firmware — the TV check screen helps us find the right call.
+  function askTvToStart(app) {
+    var bridge = window.omi_platform || window.opera_omi;
+    if (!bridge || typeof bridge.sendPlatformMessage !== "function") return false;
+    var info = { appId: app.appId, name: app.name, url: app.url, AppName: app.name, StartCommand: app.url };
+    var msgs = [
+      { type: "APPMessage", MsgType: "appControl", action: "startApp", source: "browser", startAppType: 2, param: info },
+      { type: "APPMessage", MsgType: "appControl", action: "launchApp", source: "browser", param: info }
+    ];
+    for (var i = 0; i < msgs.length; i++) {
+      try { bridge.sendPlatformMessage(JSON.stringify(msgs[i])); } catch (e) {}
     }
+    return true;
   }
 
-  // ---------- settings sheet ----------
+  // Resolves true if the page goes to the background (another app opened).
+  function waitForHandoff(ms, done) {
+    var finished = false;
+    function finish(ok) {
+      if (finished) return;
+      finished = true;
+      document.removeEventListener("visibilitychange", onVis, false);
+      window.removeEventListener("blur", onBlur, false);
+      clearTimeout(timer);
+      done(ok);
+    }
+    function onVis() { if (document.hidden) finish(true); }
+    function onBlur() { finish(true); }
+    document.addEventListener("visibilitychange", onVis, false);
+    window.addEventListener("blur", onBlur, false);
+    var timer = setTimeout(function () { finish(false); }, ms);
+  }
+
+  function openApp(app) {
+    if (app.web) { window.location.href = app.url; return; }
+
+    var tvApp = findTvApp(app);
+    var tvUrl = tvApp && (tvApp.StartCommand || tvApp.URL);
+    if (tvUrl && /^https?:\/\//.test(tvUrl)) { window.location.href = tvUrl; return; }
+
+    toast("Opening " + app.label + "…", 2500);
+    askTvToStart(app);
+    waitForHandoff(2500, function (ok) {
+      if (ok) return;
+      if (app.webFallback) { window.location.href = app.webFallback; return; }
+      toast(app.label + " couldn't be opened from here yet. Use the " + app.label +
+            " button on your remote for now. Press RED to run a TV check and send Claude a photo.", 9000);
+    });
+  }
+
+  // ---------- sheets: settings + TV check ----------
 
   var ROWS = [
-    { key: "picture", label: "Picture" },
-    { key: "layout", label: "Layout" },
+    { key: "wallpaper", label: "Wallpaper" },
+    { key: "every", label: "Change every" },
     { key: "clock", label: "Clock" },
-    { key: "weather", label: "Weather" },
-    { key: "frame", label: "Frame mode after" },
+    { key: "frame", label: "Hide dock after" },
+    { key: "check", label: "TV check" },
     { key: "reset", label: "Reset to defaults" }
   ];
-  var rowIndex = 0, settingsOpen = false;
+  var rowIndex = 0, sheet = null;
 
   function renderSettings() {
     var ul = $("settings-list");
@@ -258,52 +324,62 @@
     var i = findIndex(list, settings[r.key]);
     settings[r.key] = list[(i + dir + list.length) % list.length].id;
     save();
-    apply(r.key);
+    if (r.key === "wallpaper" || r.key === "every") startWallpaper();
+    if (r.key === "clock") tickClock();
+    if (r.key === "frame") resetIdle();
     renderSettings();
   }
 
-  function apply(key) {
-    if (!key || key === "layout") stage.className = "layout-" + settings.layout + (settings.weather === "off" ? " no-weather" : "") +
-      (settingsOpen ? " settings-open" : "");
-    if (!key || key === "weather") {
-      if (settings.weather === "off") addClass(stage, "no-weather"); else { removeClass(stage, "no-weather"); loadWeather(); }
-    }
-    if (!key || key === "picture") startBackground();
-    if (!key || key === "clock") tickClock();
-    if (!key || key === "frame") resetIdle();
+  function openSheet(name) {
+    closeSheet();
+    removeClass($("toast"), "on");
+    sheet = name;
+    if (name === "settings") { rowIndex = 0; renderSettings(); }
+    if (name === "diag") $("diag-text").textContent = tvReport();
+    addClass(stage, name === "settings" ? "settings-open" : "diag-open");
   }
 
-  function openSettings() {
-    settingsOpen = true;
-    rowIndex = 0;
-    renderSettings();
-    addClass(stage, "settings-open");
-  }
-  function closeSettings() {
-    settingsOpen = false;
+  function closeSheet() {
     removeClass(stage, "settings-open");
+    removeClass(stage, "diag-open");
+    sheet = null;
+  }
+
+  function tvReport() {
+    var out = [], names = [], k;
+    function tryCall(fn) { try { return typeof window[fn] === "function" ? String(window[fn]()) : "-"; } catch (e) { return "error"; } }
+    out.push("Screen: " + window.innerWidth + " x " + window.innerHeight);
+    out.push("Browser: " + navigator.userAgent);
+    out.push("Model: " + tryCall("Hisense_GetModelName") + "   Firmware: " + tryCall("Hisense_GetFirmWareVersion") +
+             "   OS: " + tryCall("Hisense_GetOSVersion"));
+    try { for (k in window) { if (/hisense|omi|vidaa|hiutils/i.test(k)) names.push(k); } } catch (e) {}
+    out.push("TV functions: " + (names.length ? names.sort().join(", ") : "none found"));
+    var list = readTvAppList();
+    out.push("App list readable: " + (list ? "yes (" + list.length + " apps)" : "no"));
+    if (list) {
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i] || {};
+        if (/netflix|disney|youtube|prime|amazon/i.test(String(a.AppName || a.Title))) {
+          out.push("  " + (a.AppName || a.Title) + " | id " + a.Id + " | " + (a.Type || "") + " | " + shorten(String(a.StartCommand || a.URL || ""), 70));
+        }
+      }
+    }
+    return out.join("\n");
   }
 
   // ---------- frame mode (idle) ----------
 
   var idleTimer = null, framed = false;
 
-  function enterFrame() {
-    if (settingsOpen) closeSettings();
-    framed = true;
-    addClass(stage, "frame");
-  }
-  function leaveFrame() {
-    framed = false;
-    removeClass(stage, "frame");
-  }
+  function enterFrame() { closeSheet(); framed = true; addClass(stage, "frame"); }
+  function leaveFrame() { framed = false; removeClass(stage, "frame"); }
   function resetIdle() {
     clearTimeout(idleTimer);
     var mins = parseInt(settings.frame, 10);
     if (mins > 0) idleTimer = setTimeout(enterFrame, mins * 60000);
   }
 
-  // ---------- exit back to the VIDAA launcher ----------
+  // ---------- back to the Hisense home screen ----------
 
   function exitApp() {
     try { if (typeof window.Hisense_Exit === "function") { window.Hisense_Exit(); return; } } catch (e) {}
@@ -319,27 +395,27 @@
     var code = ev.keyCode || ev.which;
     resetIdle();
 
-    if (framed) {           // any key just wakes the screen
-      leaveFrame();
-      ev.preventDefault();
-      return;
-    }
+    if (framed) { leaveFrame(); ev.preventDefault(); return; } // first press only wakes
 
     if (isBack(code)) {
       ev.preventDefault();
-      if (settingsOpen) closeSettings(); else exitApp();
+      if (sheet) closeSheet(); else exitApp();
       return;
     }
-    if (code === KEY.BLUE) { ev.preventDefault(); settingsOpen ? closeSettings() : openSettings(); return; }
+    if (code === KEY.BLUE) { ev.preventDefault(); sheet === "settings" ? closeSheet() : openSheet("settings"); return; }
+    if (code === KEY.RED) { ev.preventDefault(); sheet === "diag" ? closeSheet() : openSheet("diag"); return; }
     if (code === KEY.YELLOW) { ev.preventDefault(); enterFrame(); return; }
 
-    if (settingsOpen) {
+    if (sheet === "diag") return;
+    if (sheet === "settings") {
       if (code === KEY.UP) rowIndex = (rowIndex - 1 + ROWS.length) % ROWS.length;
       else if (code === KEY.DOWN) rowIndex = (rowIndex + 1) % ROWS.length;
       else if (code === KEY.LEFT) changeSetting(-1);
       else if (code === KEY.RIGHT) changeSetting(1);
       else if (code === KEY.OK) {
-        if (ROWS[rowIndex].key === "reset") { settings = defaults(); save(); apply(); }
+        var key = ROWS[rowIndex].key;
+        if (key === "check") { openSheet("diag"); ev.preventDefault(); return; }
+        if (key === "reset") { settings = defaults(); save(); startWallpaper(); tickClock(); resetIdle(); }
         else changeSetting(1);
       } else return;
       ev.preventDefault();
@@ -347,20 +423,36 @@
       return;
     }
 
-    if (code === KEY.LEFT) focusTile(tileIndex - 1);
-    else if (code === KEY.RIGHT) focusTile(tileIndex + 1);
-    else if (code === KEY.OK) tiles[tileIndex].action();
-    else return;
+    if (zone === "dock") {
+      if (code === KEY.LEFT) tileIndex = Math.max(0, tileIndex - 1);
+      else if (code === KEY.RIGHT) tileIndex = Math.min(tiles.length - 1, tileIndex + 1);
+      else if (code === KEY.UP) { zone = "top"; iconIndex = icons.length - 1; }
+      else if (code === KEY.OK && tiles[tileIndex]) openApp(tiles[tileIndex].app);
+      else return;
+    } else {
+      if (code === KEY.LEFT) iconIndex = Math.max(0, iconIndex - 1);
+      else if (code === KEY.RIGHT) iconIndex = Math.min(icons.length - 1, iconIndex + 1);
+      else if (code === KEY.DOWN) zone = "dock";
+      else if (code === KEY.OK) runIcon(icons[iconIndex].act);
+      else return;
+    }
     ev.preventDefault();
+    paintFocus();
+  }, false);
+
+  // Coming back from an app: wake up and show the dock again.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { leaveFrame(); resetIdle(); tickClock(); }
   }, false);
 
   // ---------- start ----------
 
   window.addEventListener("resize", fit, false);
   fit();
-  buildTiles();
-  focusTile(0);
-  apply();
-  setInterval(tickClock, 1000 * 5);
-  setInterval(loadWeather, 1000 * 60 * 30);
+  buildDock();
+  paintFocus();
+  tickClock();
+  startWallpaper();
+  resetIdle();
+  setInterval(tickClock, 5000);
 })();
