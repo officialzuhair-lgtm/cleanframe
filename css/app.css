@@ -1,0 +1,227 @@
+/* CleanFrame for VIDAA.
+   TV-safe rules: no webfonts, no backdrop-filter, motion via transform/opacity only. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0b0d12;
+  color: #fff;
+  font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+  cursor: none;
+}
+
+#stage {
+  position: absolute; left: 0; top: 0;
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  -webkit-transform-origin: 0 0; transform-origin: 0 0;
+}
+
+/* ---------- background ---------- */
+
+.bg {
+  position: absolute; left: -4%; top: -4%;
+  width: 108%; height: 108%;
+  background-size: cover; background-position: center;
+  opacity: 0;
+  -webkit-transition: opacity 2.4s ease; transition: opacity 2.4s ease;
+  -webkit-animation: drift 60s ease-in-out infinite alternate;
+  animation: drift 60s ease-in-out infinite alternate;
+}
+.bg.on { opacity: 1; }
+
+@-webkit-keyframes drift {
+  from { -webkit-transform: translate3d(0, 0, 0) scale(1); }
+  to   { -webkit-transform: translate3d(-2%, -1.5%, 0) scale(1.04); }
+}
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-2%, -1.5%, 0) scale(1.04); }
+}
+
+/* Built-in colour scenes (used when no photos are listed in config.js) */
+.scene-dusk {
+  background:
+    radial-gradient(ellipse 60% 45% at 75% 72%, rgba(255,170,110,.85), rgba(255,170,110,0) 70%),
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(92,72,170,.9), rgba(92,72,170,0) 70%),
+    linear-gradient(180deg, #1d1b3a 0%, #5a3a6e 48%, #e0826a 78%, #2a1c2c 100%);
+}
+.scene-lake {
+  background:
+    radial-gradient(ellipse 50% 30% at 50% 58%, rgba(220,240,255,.55), rgba(220,240,255,0) 70%),
+    linear-gradient(180deg, #0f2a44 0%, #2f6f8f 45%, #a9d3e0 58%, #1f4e66 62%, #0b2233 100%);
+}
+.scene-forest {
+  background:
+    radial-gradient(ellipse 40% 35% at 70% 20%, rgba(240,230,170,.55), rgba(240,230,170,0) 70%),
+    radial-gradient(ellipse 90% 50% at 30% 100%, rgba(10,40,25,1), rgba(10,40,25,0) 70%),
+    linear-gradient(170deg, #1e3b2c 0%, #3f6b45 40%, #8aa86a 70%, #213826 100%);
+}
+.scene-ember {
+  background:
+    radial-gradient(ellipse 55% 55% at 30% 70%, rgba(255,110,60,.8), rgba(255,110,60,0) 70%),
+    radial-gradient(ellipse 45% 40% at 80% 25%, rgba(255,200,120,.45), rgba(255,200,120,0) 70%),
+    linear-gradient(135deg, #1a0d0a 0%, #4a1c12 50%, #120808 100%);
+}
+.scene-night {
+  background:
+    radial-gradient(circle at 78% 22%, rgba(235,240,255,.95) 0, rgba(235,240,255,.95) 46px, rgba(160,180,255,.25) 50px, rgba(160,180,255,0) 220px),
+    radial-gradient(ellipse 90% 40% at 50% 100%, rgba(40,60,110,.9), rgba(40,60,110,0) 70%),
+    linear-gradient(180deg, #05070f 0%, #0d1630 60%, #1b2a4d 100%);
+}
+.scene-paper {
+  background:
+    radial-gradient(ellipse 70% 60% at 30% 30%, rgba(255,255,255,.6), rgba(255,255,255,0) 70%),
+    linear-gradient(160deg, #d9d2c3 0%, #b9ad97 60%, #8f8470 100%);
+}
+
+/* Darkens edges so text stays readable on any picture */
+.shade {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.45) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0) 52%, rgba(0,0,0,.62) 100%);
+  -webkit-transition: opacity 1.2s ease; transition: opacity 1.2s ease;
+}
+
+/* ---------- main UI ---------- */
+
+#ui {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  padding: 96px 120px 72px;
+  -webkit-transition: opacity .9s ease; transition: opacity .9s ease;
+}
+
+.top { position: relative; height: 560px; }
+
+.timebox { position: absolute; left: 0; top: 0; }
+.greeting { font-size: 40px; font-weight: 400; opacity: .85; letter-spacing: .5px; }
+.clock {
+  font-size: 230px; font-weight: 200; line-height: 1;
+  letter-spacing: -6px; margin: 6px 0 0 -10px;
+  text-shadow: 0 4px 40px rgba(0,0,0,.25);
+}
+.clock .ampm { font-size: 60px; font-weight: 300; letter-spacing: 0; margin-left: 16px; opacity: .8; }
+.date { font-size: 44px; font-weight: 300; opacity: .9; margin-top: 10px; }
+
+.weather { position: absolute; right: 0; top: 18px; text-align: right; }
+.w-temp { font-size: 110px; font-weight: 200; line-height: 1; }
+.w-text { font-size: 38px; font-weight: 400; margin-top: 8px; opacity: .92; }
+.w-range { font-size: 30px; font-weight: 300; margin-top: 6px; opacity: .7; }
+
+/* Tiles */
+.tiles {
+  position: absolute; left: 120px; right: 120px; bottom: 150px;
+  height: 250px;
+  white-space: nowrap;
+}
+.tile {
+  display: inline-block; vertical-align: top;
+  width: 262px; height: 230px; margin-right: 30px;
+  border-radius: 28px;
+  background: rgba(20,22,30,.55);
+  border: 2px solid rgba(255,255,255,.12);
+  position: relative;
+  -webkit-transition: -webkit-transform .18s ease, background-color .18s ease, border-color .18s ease;
+  transition: transform .18s ease, background-color .18s ease, border-color .18s ease;
+}
+.tile .badge {
+  position: absolute; left: 32px; top: 32px;
+  width: 92px; height: 92px; border-radius: 24px;
+  font-size: 50px; font-weight: 700; line-height: 92px; text-align: center;
+  color: #fff;
+  background-size: cover; background-position: center;
+}
+.tile .label {
+  position: absolute; left: 34px; bottom: 30px; right: 24px;
+  font-size: 34px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.tile.small { width: 200px; }
+.tile.small .badge { background: rgba(255,255,255,.14); font-weight: 300; }
+
+.tile.focus {
+  -webkit-transform: translateY(-14px) scale(1.07); transform: translateY(-14px) scale(1.07);
+  background: rgba(255,255,255,.94);
+  border-color: #fff;
+  color: #11131a;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+}
+.tile.small.focus .badge { background: rgba(0,0,0,.08); color: #11131a; }
+
+.hints {
+  position: absolute; left: 120px; bottom: 60px;
+  font-size: 26px; opacity: .6;
+}
+.hints span { margin-right: 44px; }
+.hints b { font-weight: 600; margin-right: 6px; }
+.dot { display: inline-block; width: 18px; height: 18px; border-radius: 9px; margin-right: 10px; vertical-align: -1px; }
+.dot.blue { background: #3b82f6; }
+.dot.yellow { background: #facc15; }
+
+/* ---------- layouts ---------- */
+
+.layout-centered .timebox { left: 0; right: 0; text-align: center; top: 40px; }
+.layout-centered .clock { margin-left: 0; }
+.layout-centered .weather { display: none; }
+.layout-centered .tiles { text-align: center; }
+.layout-centered .tile:last-child { margin-right: 0; }
+
+.layout-minimal .greeting, .layout-minimal .w-range, .layout-minimal .hints { display: none; }
+.layout-minimal .clock { font-size: 150px; letter-spacing: -3px; }
+.layout-minimal .tile { width: 220px; height: 180px; }
+.layout-minimal .tile .badge { width: 70px; height: 70px; line-height: 70px; font-size: 38px; left: 26px; top: 26px; border-radius: 18px; }
+.layout-minimal .tile .label { font-size: 28px; left: 28px; bottom: 22px; }
+.layout-minimal .tiles { bottom: 90px; height: 200px; }
+
+.no-weather .weather { display: none; }
+
+/* ---------- frame mode ---------- */
+
+#frame-clock {
+  position: absolute; right: 90px; bottom: 70px;
+  font-size: 64px; font-weight: 200;
+  text-shadow: 0 2px 24px rgba(0,0,0,.5);
+  opacity: 0;
+  -webkit-transition: opacity 1.2s ease; transition: opacity 1.2s ease;
+}
+.frame #ui, .frame .shade { opacity: 0; }
+.frame #frame-clock { opacity: .85; }
+
+/* ---------- settings sheet ---------- */
+
+#settings {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 720px;
+  background: rgba(14,16,22,.94);
+  padding: 90px 64px;
+  -webkit-transform: translate3d(100%, 0, 0); transform: translate3d(100%, 0, 0);
+  -webkit-transition: -webkit-transform .32s ease; transition: transform .32s ease;
+}
+.settings-open #settings { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
+#settings h2 { font-size: 54px; font-weight: 300; margin-bottom: 44px; }
+#settings-list { list-style: none; }
+#settings-list li {
+  height: 104px; padding: 0 32px; margin-bottom: 14px;
+  border-radius: 20px;
+  font-size: 34px; line-height: 104px;
+  position: relative;
+  background: rgba(255,255,255,.05);
+}
+#settings-list li .val { position: absolute; right: 32px; top: 0; opacity: .75; }
+#settings-list li .val:before { content: "‹  "; opacity: 0; }
+#settings-list li .val:after { content: "  ›"; opacity: 0; }
+#settings-list li.focus { background: #fff; color: #11131a; }
+#settings-list li.focus .val { opacity: 1; }
+#settings-list li.focus .val:before, #settings-list li.focus .val:after { opacity: .6; }
+.settings-hint { position: absolute; left: 64px; bottom: 64px; font-size: 26px; opacity: .55; }
+
+/* Icons drawn with CSS, so they don't depend on the TV's fonts */
+.ico-frame, .ico-settings { position: absolute; left: 26px; top: 26px; width: 40px; height: 40px; }
+.ico-frame { border: 4px solid currentColor; border-radius: 6px; }
+.ico-frame:after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 6px; height: 12px;
+  border-top: 4px solid currentColor; }
+.ico-settings { border-top: 4px solid currentColor; border-bottom: 4px solid currentColor; top: 30px; height: 32px; }
+.ico-settings:after { content: ""; position: absolute; left: 0; right: 0; top: 10px; border-top: 4px solid currentColor; }
+
+.layout-centered .hints { left: 0; right: 0; text-align: center; }
