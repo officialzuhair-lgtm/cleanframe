@@ -1,0 +1,141 @@
+/* CleanFrame for VIDAA.
+   TV-safe rules: no webfonts, no live CSS blur (the glass is a pre-blurred image),
+   few layers, motion via opacity/transform only. */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0b0d12;
+  color: #fff;
+  font-family: "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+  cursor: none;
+}
+
+#stage {
+  position: absolute; left: 0; top: 0;
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  -webkit-transform-origin: 0 0; transform-origin: 0 0;
+}
+
+/* ---------- wallpaper ---------- */
+
+.bg, .glass {
+  position: absolute;
+  background-size: 1920px 1080px; background-position: 0 0; background-repeat: no-repeat;
+  opacity: 0;
+  -webkit-transition: opacity 1.6s ease; transition: opacity 1.6s ease;
+}
+.bg { left: 0; top: 0; width: 1920px; height: 1080px; }
+.bg.on, .glass.on { opacity: 1; }
+
+/* Top fade keeps the clock and icons readable on bright skies */
+.shade {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 340px;
+  background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,0) 100%);
+}
+
+/* ---------- top row ---------- */
+
+.clock {
+  position: absolute; left: 140px; top: 58px;
+  font-size: 96px; font-weight: 400; letter-spacing: -1px;
+  text-shadow: 0 2px 18px rgba(0,0,0,.3);
+}
+.clock .ampm { font-size: 34px; font-weight: 500; margin-left: 12px; opacity: .85; letter-spacing: 0; }
+
+.topbar { position: absolute; right: 112px; top: 62px; }
+.icon-btn {
+  display: inline-block; vertical-align: top;
+  width: 96px; height: 96px; margin-left: 18px;
+  border-radius: 48px;
+  -webkit-transition: background-color .15s ease; transition: background-color .15s ease;
+}
+.icon-btn svg {
+  display: block; width: 48px; height: 48px; margin: 24px;
+  fill: none; stroke: #fff; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round;
+}
+.icon-btn.focus { background: rgba(255,255,255,.92); }
+.icon-btn.focus svg { stroke: #14161c; }
+
+/* ---------- glass dock ---------- */
+
+.dock {
+  position: absolute; left: 100px; top: 676px; width: 1720px; height: 232px;
+  border-radius: 44px; overflow: hidden;
+  border: 2px solid rgba(255,255,255,.14);
+  -webkit-transition: opacity .8s ease; transition: opacity .8s ease;
+}
+/* The glass layer is the whole 1920x1080 blurred wallpaper, shifted so it lines up
+   exactly behind the dock (dock left/top + its 2px border). */
+.glass { left: -102px; top: -678px; width: 1920px; height: 1080px; }
+.glass-tint { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(255,255,255,.07); }
+
+.dock-row { position: absolute; left: 14px; top: 14px; right: 14px; bottom: 14px; white-space: nowrap; font-size: 0; }
+.tile {
+  display: inline-block; vertical-align: top;
+  height: 200px;
+  border-radius: 32px;
+  border: 2px solid rgba(255,255,255,0);
+  text-align: center;
+  position: relative;
+  -webkit-transition: background-color .15s ease, border-color .15s ease;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.tile.focus { background: rgba(255,255,255,.17); border-color: rgba(255,255,255,.24); }
+.tile .logo { position: absolute; left: 0; right: 0; top: 30px; height: 84px; }
+.tile .logo svg { height: 84px; fill: #fff; }
+.tile .label { position: absolute; left: 0; right: 0; bottom: 30px; font-size: 40px; font-weight: 400; }
+
+/* ---------- small things ---------- */
+
+.credit {
+  position: absolute; right: 112px; bottom: 34px; max-width: 1100px;
+  font-size: 18px; opacity: .55; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 6px rgba(0,0,0,.6);
+  -webkit-transition: opacity .8s ease; transition: opacity .8s ease;
+}
+
+.toast {
+  position: absolute; left: 410px; top: 470px; width: 1100px;
+  padding: 30px 44px; border-radius: 28px;
+  background: rgba(14,16,22,.92);
+  font-size: 34px; line-height: 1.35; text-align: center;
+  opacity: 0;
+  -webkit-transition: opacity .3s ease; transition: opacity .3s ease;
+}
+.toast.on { opacity: 1; }
+
+/* Frame mode: only the picture and the clock */
+.topbar { -webkit-transition: opacity .8s ease; transition: opacity .8s ease; }
+.frame .dock, .frame .topbar, .frame .credit { opacity: 0; }
+
+/* ---------- settings + TV check sheets ---------- */
+
+#settings, #diag {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 760px;
+  background: rgba(14,16,22,.95);
+  padding: 90px 64px;
+  -webkit-transform: translate3d(100%, 0, 0); transform: translate3d(100%, 0, 0);
+  -webkit-transition: -webkit-transform .32s ease; transition: transform .32s ease;
+}
+#diag { width: 1200px; }
+.settings-open #settings, .diag-open #diag { -webkit-transform: translate3d(0, 0, 0); transform: translate3d(0, 0, 0); }
+#settings h2, #diag h2 { font-size: 54px; font-weight: 300; margin-bottom: 44px; }
+#settings-list { list-style: none; }
+#settings-list li {
+  height: 100px; padding: 0 32px; margin-bottom: 14px;
+  border-radius: 20px;
+  font-size: 34px; line-height: 100px;
+  position: relative;
+  background: rgba(255,255,255,.05);
+}
+#settings-list li .val { position: absolute; right: 32px; top: 0; opacity: .75; }
+#settings-list li.focus { background: #fff; color: #11131a; }
+#settings-list li.focus .val { opacity: 1; }
+.settings-hint { position: absolute; left: 64px; bottom: 64px; font-size: 26px; opacity: .55; }
+#diag { padding-bottom: 130px; overflow: hidden; }
+#diag-text { font-family: Menlo, "Courier New", monospace; font-size: 19px; line-height: 1.4; max-height: 780px; overflow: hidden; white-space: pre-wrap; opacity: .9; }
